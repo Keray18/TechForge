@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Plus, Clock, CheckCircle, XCircle, User, LogOut } from "lucide-react"
 import Link from "next/link"
+import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog"
+import { NewProjectForm } from "./newProject/page"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
+import { Separator } from "@/components/ui/separator"
 
 // Mock data - in real app, this would come from your database
 const mockRequests = [
@@ -37,6 +41,7 @@ const mockRequests = [
 
 export default function ClientDashboard() {
   const [requests] = useState(mockRequests)
+  const [open, setOpen] = useState(false)
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -79,12 +84,17 @@ export default function ClientDashboard() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/dashboard/client/new-request">
-              <Button className="bg-white text-blue-600 hover:bg-blue-50">
-                <Plus className="h-4 w-4 mr-2" />
-                New Request
-              </Button>
-            </Link>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-white text-blue-600 hover:bg-blue-50">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Project
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="p-0 bg-transparent border-none shadow-none max-w-3xl">
+                <NewProjectForm onClose={() => setOpen(false)} />
+              </DialogContent>
+            </Dialog>
             <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
               <LogOut className="h-4 w-4 mr-2" />
               Logout
@@ -143,30 +153,39 @@ export default function ClientDashboard() {
         {/* Requests List */}
         <Card>
           <CardHeader>
-            <CardTitle>Your Requests</CardTitle>
+            <CardTitle>Your Projects</CardTitle>
             <CardDescription>Track the status of your development requests</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <Accordion type="single" collapsible className="space-y-6">
               {requests.map((request) => (
-                <div key={request.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{request.title}</h3>
-                    <Badge className={getStatusColor(request.status)}>
-                      <div className="flex items-center space-x-1">
+                <AccordionItem key={request.id} value={request.id.toString()} className="bg-white rounded-xl shadow-sm border transition-all duration-200 hover:shadow-md">
+                  <AccordionTrigger className="flex w-full items-center justify-between gap-6 px-6 py-5 group focus:outline-none">
+                    <div className="flex flex-col items-start text-left flex-1">
+                      <span className="text-xl font-bold mb-1 text-gray-900">{request.title}</span>
+                      <span className="text-gray-500 text-base font-normal">{request.description}</span>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 min-w-[120px]">
+                      <Badge className={getStatusColor(request.status) + " px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1"}>
                         {getStatusIcon(request.status)}
                         <span className="capitalize">{request.status}</span>
-                      </div>
-                    </Badge>
-                  </div>
-                  <p className="text-gray-600 mb-3">{request.description}</p>
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>Created: {request.createdAt}</span>
-                    <span className="font-medium text-green-600">{request.budget}</span>
-                  </div>
-                </div>
+                      </Badge>
+                      <span className="font-semibold text-green-600 text-lg">{request.budget}</span>
+                    </div>
+                    <span className="ml-4 transition-transform duration-200 group-data-[state=open]:rotate-180">
+                      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="bg-gray-50 px-8 pb-6 pt-2 rounded-b-xl border-t">
+                    <Separator className="my-4" />
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <span className="text-gray-500 text-sm">Created: <span className="font-medium text-gray-700">{request.createdAt}</span></span>
+                      <Button variant="default" className="w-full md:w-auto font-semibold shadow-sm">New Request</Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           </CardContent>
         </Card>
       </main>

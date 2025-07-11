@@ -42,11 +42,8 @@ export default function RegisterPage() {
       setLoading(true)
       setError("") // Clear any previous errors
       
-      // Prepare data for API (remove confirmPassword as it's not needed for the backend)
-      const apiData = {
-        ...formData,
-        confirmPassword: undefined
-      }
+      // Prepare data for API (send confirmPassword as well)
+      const apiData = formData;
       
       // Call the register API
       const response = await register(apiData)
