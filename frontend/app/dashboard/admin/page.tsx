@@ -1,66 +1,125 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Shield, Users, Briefcase, Clock, CheckCircle, XCircle, LogOut } from "lucide-react"
+import { Shield, Users, Briefcase, Clock, CheckCircle, XCircle, LogOut, Eye, Check, X } from "lucide-react"
+import { projectAPI, authAPI } from "@/lib/api"
+import { formatRelativeTime } from "@/lib/utils"
+import { NotificationBell } from "@/components/NotificationBell"
+import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { AuthGuard } from "@/components/AuthGuard"
 
-// Mock data - in real app, this would come from your database
-const mockRequests = [
-  {
-    id: 1,
-    title: "E-commerce Website",
-    client: "John Doe",
-    assignedTo: "Alice Smith",
-    status: "pending",
-    priority: "high",
-    createdAt: "2024-01-15",
-    budget: "$5,000",
-  },
-  {
-    id: 2,
-    title: "Mobile App Development",
-    client: "Jane Wilson",
-    assignedTo: "Bob Johnson",
-    status: "completed",
-    priority: "medium",
-    createdAt: "2024-01-10",
-    budget: "$8,000",
-  },
-  {
-    id: 3,
-    title: "Website Redesign",
-    client: "Mike Brown",
-    assignedTo: "Carol Davis",
-    status: "rejected",
-    priority: "low",
-    createdAt: "2024-01-20",
-    budget: "$3,000",
-  },
-]
+interface Project {
+  _id: string
+  title: string
+  description: string
+  category: string
+  budget: string
+  timeline: string
+  priority: string
+  status: 'pending' | 'accepted' | 'rejected' | 'completed'
+  createdAt: string
+  acceptedAt?: string
+  rejectedAt?: string
+  rejectionReason?: string
+  client: {
+    _id: string
+    firstName: string
+    lastName: string
+    email: string
+  }
+}
 
-const mockUsers = [
-  { id: 1, name: "John Doe", role: "client", email: "john@example.com", status: "active" },
-  { id: 2, name: "Alice Smith", role: "employee", email: "alice@company.com", status: "active" },
-  { id: 3, name: "Bob Johnson", role: "employee", email: "bob@company.com", status: "active" },
-  { id: 4, name: "Carol Davis", role: "employee", email: "carol@company.com", status: "inactive" },
-]
-
-export default function AdminDashboard() {
-  const [requests, setRequests] = useState(mockRequests)
-  const [users] = useState(mockUsers)
+function AdminDashboardContent() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("requests")
+  const [user, setUser] = useState<any>(null)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [rejectionReason, setRejectionReason] = useState("")
+  const [actionLoading, setActionLoading] = useState(false)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const router = useRouter()
 
-  const updateRequestStatus = (id: number, newStatus: string) => {
-    setRequests((prev) => prev.map((req) => (req.id === id ? { ...req, status: newStatus } : req)))
+  useEffect(() => {
+    fetchProjects()
+    const currentUser = authAPI.getCurrentUser()
+    setUser(currentUser)
+  }, [])
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true)
+      const response = await projectAPI.getAllProjects()
+      // Backend returns { success: true, projects: [...] }
+      setProjects(response.projects || [])
+    } catch (error: any) {
+      console.error('Failed to fetch projects:', error)
+      setError(error.response?.data?.message || 'Failed to load projects')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = () => {
+    authAPI.logout()
+    router.push('/login')
+  }
+
+  const handleAcceptProject = async (projectId: string) => {
+    try {
+      setActionLoading(true)
+      await projectAPI.acceptProject(projectId)
+      await fetchProjects() // Refresh the list
+    } catch (error: any) {
+      console.error('Failed to accept project:', error)
+      setError(error.response?.data?.message || 'Failed to accept project')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleRejectProject = async (projectId: string) => {
+    try {
+      setActionLoading(true)
+      await projectAPI.rejectProject(projectId, rejectionReason)
+      setShowRejectDialog(false)
+      setRejectionReason("")
+      await fetchProjects() // Refresh the list
+    } catch (error: any) {
+      console.error('Failed to reject project:', error)
+      setError(error.response?.data?.message || 'Failed to reject project')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleCompleteProject = async (projectId: string) => {
+    try {
+      setActionLoading(true)
+      await projectAPI.completeProject(projectId)
+      await fetchProjects() // Refresh the list
+    } catch (error: any) {
+      console.error('Failed to complete project:', error)
+      setError(error.response?.data?.message || 'Failed to complete project')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
         return <Clock className="h-4 w-4" />
+      case "accepted":
+        return <CheckCircle className="h-4 w-4" />
       case "completed":
         return <CheckCircle className="h-4 w-4" />
       case "rejected":
@@ -74,12 +133,29 @@ export default function AdminDashboard() {
     switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800"
+      case "accepted":
+        return "bg-blue-100 text-blue-800"
       case "completed":
         return "bg-green-100 text-green-800"
       case "rejected":
         return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Under Review"
+      case "accepted":
+        return "Accepted"
+      case "completed":
+        return "Completed"
+      case "rejected":
+        return "Rejected"
+      default:
+        return status
     }
   }
 
@@ -96,6 +172,22 @@ export default function AdminDashboard() {
     }
   }
 
+  const pendingProjects = projects.filter(p => p.status === 'pending')
+  const acceptedProjects = projects.filter(p => p.status === 'accepted')
+  const completedProjects = projects.filter(p => p.status === 'completed')
+  const rejectedProjects = projects.filter(p => p.status === 'rejected')
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading projects...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -107,184 +199,322 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-red-100">System Administration Panel</p>
+              <p className="text-red-100">
+                Welcome back, {user?.firstName} {user?.lastName}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center space-x-4">
+            <NotificationBell />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-white/20"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab("requests")}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "requests"
-                  ? "border-red-500 text-red-600 bg-red-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Briefcase className="h-4 w-4 inline mr-2" />
-              Requests Management
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "users"
-                  ? "border-red-500 text-red-600 bg-red-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Users className="h-4 w-4 inline mr-2" />
-              User Management
-            </button>
-          </div>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex space-x-1 bg-white p-1 rounded-lg shadow-sm mb-6">
+          <button
+            onClick={() => setActiveTab("requests")}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "requests"
+                ? "bg-red-100 text-red-700"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            All Requests ({projects.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "pending"
+                ? "bg-yellow-100 text-yellow-700"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Pending ({pendingProjects.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("accepted")}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "accepted"
+                ? "bg-blue-100 text-blue-700"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Accepted ({acceptedProjects.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("completed")}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "completed"
+                ? "bg-green-100 text-green-700"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Completed ({completedProjects.length})
+          </button>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-md">
+            {error}
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Requests</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Total Projects</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{requests.length}</div>
+              <div className="text-2xl font-bold">{projects.length}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Pending Review</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.filter((u) => u.status === "active").length}</div>
+              <div className="text-2xl font-bold text-yellow-600">{pendingProjects.length}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Pending Requests</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Accepted</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {requests.filter((r) => r.status === "pending").length}
-              </div>
+              <div className="text-2xl font-bold text-blue-600">{acceptedProjects.length}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Completed This Month</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {requests.filter((r) => r.status === "completed").length}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{completedProjects.length}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Requests Management Tab */}
-        {activeTab === "requests" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>All Requests</CardTitle>
-              <CardDescription>Manage and update the status of all development requests</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {requests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{request.title}</h3>
-                        <p className="text-sm text-gray-600">
-                          Client: {request.client} | Assigned to: {request.assignedTo}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Badge className={getPriorityColor(request.priority)}>{request.priority}</Badge>
-                        <Badge className={getStatusColor(request.status)}>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(request.status)}
-                            <span className="capitalize">{request.status}</span>
-                          </div>
-                        </Badge>
-                      </div>
-                    </div>
+        {/* Projects List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {activeTab === "requests" && "All Projects"}
+              {activeTab === "pending" && "Pending Projects"}
+              {activeTab === "accepted" && "Accepted Projects"}
+              {activeTab === "completed" && "Completed Projects"}
+            </CardTitle>
+            <CardDescription>Manage and review project submissions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              let filteredProjects = projects
+              if (activeTab === "pending") filteredProjects = pendingProjects
+              else if (activeTab === "accepted") filteredProjects = acceptedProjects
+              else if (activeTab === "completed") filteredProjects = completedProjects
 
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm text-gray-500">
-                        <span>Created: {request.createdAt}</span>
-                        <span className="ml-4 font-medium text-green-600">{request.budget}</span>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <Select
-                          value={request.status}
-                          onValueChange={(value) => updateRequestStatus(request.id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+              if (filteredProjects.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No projects found</p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                )
+              }
 
-        {/* Users Management Tab */}
-        {activeTab === "users" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>Manage system users and their roles</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {users.map((user) => (
-                  <div key={user.id} className="border rounded-lg p-4 flex justify-between items-center">
-                    <div>
-                      <h3 className="font-semibold">{user.name}</h3>
-                      <p className="text-sm text-gray-600">{user.email}</p>
+              return (
+                <div className="space-y-6">
+                  {filteredProjects.map((project) => (
+                    <div key={project._id} className="border rounded-lg p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-xl">{project.title}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Client: {project.client.firstName} {project.client.lastName} ({project.client.email})
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Submitted {formatRelativeTime(project.createdAt)}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Badge className={getPriorityColor(project.priority)}>
+                            {project.priority} priority
+                          </Badge>
+                          <Badge className={getStatusColor(project.status)}>
+                            <div className="flex items-center space-x-1">
+                              {getStatusIcon(project.status)}
+                              <span>{getStatusText(project.status)}</span>
+                            </div>
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-2">Project Description:</h4>
+                        <p className="text-gray-700">{project.description}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Category</p>
+                          <p className="text-sm">{project.category}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Budget</p>
+                          <p className="text-sm">{project.budget}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Timeline</p>
+                          <p className="text-sm">{project.timeline}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Priority</p>
+                          <p className="text-sm capitalize">{project.priority}</p>
+                        </div>
+                      </div>
+
+                      {project.status === "accepted" && project.acceptedAt && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-md mb-4">
+                          <p className="text-sm text-green-800">
+                            <strong>Accepted:</strong> {formatRelativeTime(project.acceptedAt)}
+                          </p>
+                        </div>
+                      )}
+
+                      {project.status === "rejected" && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-md mb-4">
+                          <p className="text-sm text-red-800">
+                            <strong>Rejected:</strong> {formatRelativeTime(project.rejectedAt || '')}
+                          </p>
+                          {project.rejectionReason && (
+                            <p className="text-sm text-red-700 mt-1">
+                              <strong>Reason:</strong> {project.rejectionReason}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-500">
+                          <span>Created: {formatRelativeTime(project.createdAt)}</span>
+                          <span className="ml-4 font-medium text-green-600">{project.budget}</span>
+                        </div>
+
+                        <div className="flex space-x-2">
+                          {project.status === "pending" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAcceptProject(project._id)}
+                                disabled={actionLoading}
+                                className="text-green-600 border-green-600 hover:bg-green-50"
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Accept
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedProject(project)
+                                  setShowRejectDialog(true)
+                                }}
+                                disabled={actionLoading}
+                                className="text-red-600 border-red-600 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {project.status === "accepted" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCompleteProject(project._id)}
+                              disabled={actionLoading}
+                              className="text-green-600 border-green-600 hover:bg-green-50"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Mark Complete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <Badge
-                        variant={
-                          user.role === "admin" ? "destructive" : user.role === "employee" ? "default" : "secondary"
-                        }
-                      >
-                        {user.role}
-                      </Badge>
-                      <Badge variant={user.status === "active" ? "default" : "secondary"}>{user.status}</Badge>
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </main>
+                  ))}
+                </div>
+              )
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Reject Project Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reject "{selectedProject?.title}"? Please provide a reason for rejection.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rejectionReason">Rejection Reason</Label>
+              <Textarea
+                id="rejectionReason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Please provide a reason for rejecting this project..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRejectDialog(false)
+                setRejectionReason("")
+              }}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => selectedProject && handleRejectProject(selectedProject._id)}
+              disabled={actionLoading || !rejectionReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {actionLoading ? "Rejecting..." : "Reject Project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+export default function AdminDashboard() {
+  return (
+    <AuthGuard requiredRole="admin">
+      <AdminDashboardContent />
+    </AuthGuard>
   )
 }

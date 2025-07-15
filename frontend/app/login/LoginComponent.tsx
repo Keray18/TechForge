@@ -1,8 +1,6 @@
 "use client"
-export const dynamic = 'force-dynamic'
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -11,15 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Briefcase, ArrowLeft } from "lucide-react"
-import { login } from "@/app/utility/api" // Import the login function
+import { authAPI } from "@/lib/api"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
-  const [loading, setLoading] = useState(false) // Add loading state
-  const [error, setError] = useState("") // Add error state
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get('registered') === 'true'
@@ -29,22 +27,21 @@ export default function LoginPage() {
     
     try {
       setLoading(true)
-      setError("") // Clear any previous errors
+      setError("")
       
       // Call the login API
-      const response = await login(formData)
+      const response = await authAPI.login(formData)
       
       // Handle successful login
       console.log("Login successful:", response)
       
-      // Get user role from response and redirect accordingly
-      // This assumes your API returns a user object with a role property
-      const userRole = response.user?.role || "client"
-      
-      // Store auth token in localStorage or cookies if provided
-      if (response.token) {
-        localStorage.setItem('authToken', response.token)
+      // Store auth data
+      if (response.token && response.user) {
+        authAPI.setAuthData(response.token, response.user)
       }
+      
+      // Get user role and redirect accordingly
+      const userRole = response.user?.role || "client"
       
       // Redirect to appropriate dashboard
       router.push(`/dashboard/${userRole}`)
@@ -71,7 +68,7 @@ export default function LoginPage() {
             <Briefcase className="h-12 w-12 text-blue-600" />
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Sign in to access your DevPortal dashboard</CardDescription>
+          <CardDescription>Sign in to access your dashboard</CardDescription>
           
           {/* Show success message if user just registered */}
           {justRegistered && (

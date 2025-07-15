@@ -1,18 +1,15 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Send, FilePlus2 } from "lucide-react"
-import Link from "next/link"
-import { toast } from "@/hooks/use-toast"
+import { Send, FilePlus2, Loader2 } from "lucide-react"
+import { projectAPI } from "@/lib/api"
 
 export function NewProjectForm({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
@@ -23,20 +20,35 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
     timeline: "",
     priority: "",
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle request submission logic here
-    console.log("New Project:", formData)
-    toast({
-      title: "Request Submitted!",
-      description: "Your new development request has been sent successfully.",
-    })
-    onClose()
+    
+    try {
+      setLoading(true)
+      setError("")
+      
+      // Submit project to API
+      const response = await projectAPI.submitProject(formData)
+      
+      console.log("Project submitted successfully:", response)
+      
+      // Close the form
+      onClose()
+    } catch (err: any) {
+      console.error("Failed to submit project:", err)
+      setError(err.response?.data?.message || "Failed to submit project. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    // Clear error when user makes changes
+    if (error) setError("")
   }
 
   return (
@@ -49,6 +61,13 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
         <CardDescription className="text-blue-800">Provide details about your development project</CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-2">
             <Label htmlFor="title">Project Title</Label>
@@ -58,13 +77,14 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
               onChange={(e) => handleChange("title", e.target.value)}
               placeholder="e.g., E-commerce Website Development"
               required
+              disabled={loading}
               className="focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Select onValueChange={(value) => handleChange("category", value)}>
+            <Select onValueChange={(value) => handleChange("category", value)} disabled={loading}>
               <SelectTrigger className="focus:ring-2 focus:ring-blue-400">
                 <SelectValue placeholder="Select project category" />
               </SelectTrigger>
@@ -89,6 +109,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
               placeholder="Provide detailed description of your project requirements, features needed, target audience, etc."
               rows={6}
               required
+              disabled={loading}
               className="focus:ring-2 focus:ring-blue-400"
             />
           </div>
@@ -96,7 +117,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="budget">Budget Range</Label>
-              <Select onValueChange={(value) => handleChange("budget", value)}>
+              <Select onValueChange={(value) => handleChange("budget", value)} disabled={loading}>
                 <SelectTrigger className="focus:ring-2 focus:ring-blue-400">
                   <SelectValue placeholder="Select budget" />
                 </SelectTrigger>
@@ -113,7 +134,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
 
             <div className="space-y-2">
               <Label htmlFor="timeline">Timeline</Label>
-              <Select onValueChange={(value) => handleChange("timeline", value)}>
+              <Select onValueChange={(value) => handleChange("timeline", value)} disabled={loading}>
                 <SelectTrigger className="focus:ring-2 focus:ring-blue-400">
                   <SelectValue placeholder="Select timeline" />
                 </SelectTrigger>
@@ -132,7 +153,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
 
           <div className="space-y-2">
             <Label htmlFor="priority">Priority Level</Label>
-            <Select onValueChange={(value) => handleChange("priority", value)}>
+            <Select onValueChange={(value) => handleChange("priority", value)} disabled={loading}>
               <SelectTrigger className="focus:ring-2 focus:ring-blue-400">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
@@ -146,11 +167,30 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="flex space-x-4 pt-2">
-            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow">
-              <Send className="h-4 w-4 mr-2" />
-              Submit Request
+            <Button 
+              type="submit" 
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Submit Request
+                </>
+              )}
             </Button>
-            <Button type="button" variant="outline" className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50" onClick={onClose}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50" 
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </Button>
           </div>

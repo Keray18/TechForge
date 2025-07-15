@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,14 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Briefcase, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
-import { register } from "@/app/utility/api" // Import the register function
-import { useRouter } from "next/navigation" // Import useRouter for navigation after successful registration
+import { authAPI } from "@/lib/api"
+import { useRouter } from "next/navigation"
 
 export default function RegisterPage() {
-  const router = useRouter() // Initialize router
+  const router = useRouter()
   const [step, setStep] = useState(1)
-  const [loading, setLoading] = useState(false) // Add loading state
-  const [error, setError] = useState("") // Add error state
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -40,18 +39,18 @@ export default function RegisterPage() {
     
     try {
       setLoading(true)
-      setError("") // Clear any previous errors
+      setError("")
       
-      // Prepare data for API (send confirmPassword as well)
-      const apiData = formData;
+      // Prepare data for API (remove confirmPassword)
+      const { confirmPassword, ...apiData } = formData
       
       // Call the register API
-      const response = await register(apiData)
+      const response = await authAPI.register(apiData)
       
       // Handle successful registration
       console.log("Registration successful:", response)
       
-      // Redirect to login page or dashboard
+      // Redirect to login page
       router.push("/login?registered=true")
     } catch (err: any) {
       // Handle registration error
@@ -92,7 +91,7 @@ export default function RegisterPage() {
             <Briefcase className="h-12 w-12 text-blue-600" />
           </div>
           <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>Join DevPortal to start managing your development projects</CardDescription>
+          <CardDescription>Join to start managing your development projects</CardDescription>
           
           {/* Step indicator */}
           <div className="flex items-center justify-center mt-4">
