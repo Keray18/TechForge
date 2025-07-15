@@ -8,9 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Briefcase, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
+import { Briefcase, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react"
 import { authAPI } from "@/lib/api"
 import { useRouter } from "next/navigation"
+import { Loader } from "@/components/Loader"
+import { FormError } from "@/components/ui/FormError"
+import { FormFieldError } from "@/components/ui/FormFieldError"
+import { validateEmail, validatePassword, validateRequired } from "@/lib/validation"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -27,15 +31,24 @@ export default function RegisterPage() {
     company: "",
     phone: "",
   })
+  const [fieldErrors, setFieldErrors] = useState<any>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
+    // Client-side validation
+    const errors: any = {}
+    errors.firstName = validateRequired(formData.firstName, "First Name")
+    errors.lastName = validateRequired(formData.lastName, "Last Name")
+    errors.industry = validateRequired(formData.industry, "Industry")
+    errors.email = validateEmail(formData.email)
+    errors.phone = validateRequired(formData.phone, "Phone Number")
+    errors.password = validatePassword(formData.password)
+    errors.confirmPassword = formData.password !== formData.confirmPassword ? "Passwords do not match." : undefined
+    setFieldErrors(errors)
+    if (Object.values(errors).some(Boolean)) return
     
     try {
       setLoading(true)
@@ -84,7 +97,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-2 sm:p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -109,12 +122,7 @@ export default function RegisterPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Display error message if any */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
-              {error}
-            </div>
-          )}
+          <FormError error={error} />
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {step === 1 ? (
@@ -129,6 +137,7 @@ export default function RegisterPage() {
                       onChange={(e) => handleChange("firstName", e.target.value)}
                       required
                     />
+                    <FormFieldError error={fieldErrors.firstName} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
@@ -138,6 +147,7 @@ export default function RegisterPage() {
                       onChange={(e) => handleChange("lastName", e.target.value)}
                       required
                     />
+                    <FormFieldError error={fieldErrors.lastName} />
                   </div>
                 </div>
 
@@ -160,6 +170,7 @@ export default function RegisterPage() {
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormFieldError error={fieldErrors.industry} />
                 </div>
 
                 <div className="space-y-2">
@@ -171,6 +182,7 @@ export default function RegisterPage() {
                   type="button" 
                   className="w-full" 
                   onClick={nextStep}
+                  disabled={loading}
                 >
                   Next Step
                   <ChevronRight className="ml-2 h-4 w-4" />
@@ -188,6 +200,7 @@ export default function RegisterPage() {
                     onChange={(e) => handleChange("email", e.target.value)}
                     required
                   />
+                  <FormFieldError error={fieldErrors.email} />
                 </div>
 
                 <div className="space-y-2">
@@ -199,28 +212,55 @@ export default function RegisterPage() {
                     onChange={(e) => handleChange("phone", e.target.value)}
                     required
                   />
+                  <FormFieldError error={fieldErrors.phone} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => handleChange("password", e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => handleChange("password", e.target.value)}
+                      required
+                      className="w-full pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  <FormFieldError error={fieldErrors.password} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                      required
+                      className="w-full pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  <FormFieldError error={fieldErrors.confirmPassword} />
                 </div>
 
                 <div className="flex gap-2 mt-6">
@@ -235,7 +275,7 @@ export default function RegisterPage() {
                     Back
                   </Button>
                   <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? "Creating Account..." : "Create Account"}
+                    {loading ? <Loader className="h-5 w-5" /> : "Create Account"}
                   </Button>
                 </div>
               </>

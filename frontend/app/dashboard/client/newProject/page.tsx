@@ -10,6 +10,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Send, FilePlus2, Loader2 } from "lucide-react"
 import { projectAPI } from "@/lib/api"
+import { Loader } from "@/components/Loader"
+import { FormError } from "@/components/ui/FormError"
+import { FormFieldError } from "@/components/ui/FormFieldError"
+import { validateRequired } from "@/lib/validation"
 
 export function NewProjectForm({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
@@ -22,23 +26,26 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<any>({})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    // Client-side validation
+    const errors: any = {}
+    errors.title = validateRequired(formData.title, "Project Title")
+    errors.description = validateRequired(formData.description, "Project Description")
+    errors.category = validateRequired(formData.category, "Category")
+    errors.budget = validateRequired(formData.budget, "Budget")
+    errors.timeline = validateRequired(formData.timeline, "Timeline")
+    errors.priority = validateRequired(formData.priority, "Priority")
+    setFieldErrors(errors)
+    if (Object.values(errors).some(Boolean)) return
     try {
       setLoading(true)
       setError("")
-      
-      // Submit project to API
       const response = await projectAPI.submitProject(formData)
-      
-      console.log("Project submitted successfully:", response)
-      
-      // Close the form
       onClose()
     } catch (err: any) {
-      console.error("Failed to submit project:", err)
       setError(err.response?.data?.message || "Failed to submit project. Please try again.")
     } finally {
       setLoading(false)
@@ -47,12 +54,12 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user makes changes
     if (error) setError("")
+    setFieldErrors((prev: any) => ({ ...prev, [field]: undefined }))
   }
 
   return (
-    <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto border-blue-200 shadow-lg bg-gradient-to-br from-blue-50 to-white">
+    <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto border-blue-200 shadow-lg bg-gradient-to-br from-blue-50 to-white p-2 sm:p-6">
       <CardHeader>
         <div className="flex items-center space-x-3 mb-2">
           <FilePlus2 className="h-6 w-6 text-blue-600" />
@@ -61,13 +68,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
         <CardDescription className="text-blue-800">Provide details about your development project</CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
-            {error}
-          </div>
-        )}
-
+        <FormError error={error} />
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-2">
             <Label htmlFor="title">Project Title</Label>
@@ -80,6 +81,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
               disabled={loading}
               className="focus:ring-2 focus:ring-blue-400"
             />
+            <FormFieldError error={fieldErrors.title} />
           </div>
 
           <div className="space-y-2">
@@ -98,6 +100,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
+            <FormFieldError error={fieldErrors.category} />
           </div>
 
           <div className="space-y-2">
@@ -112,6 +115,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
               disabled={loading}
               className="focus:ring-2 focus:ring-blue-400"
             />
+            <FormFieldError error={fieldErrors.description} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -130,6 +134,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
                   <SelectItem value="over-50k">Over $50,000</SelectItem>
                 </SelectContent>
               </Select>
+              <FormFieldError error={fieldErrors.budget} />
             </div>
 
             <div className="space-y-2">
@@ -148,6 +153,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
                   <SelectItem value="flexible">Flexible</SelectItem>
                 </SelectContent>
               </Select>
+              <FormFieldError error={fieldErrors.timeline} />
             </div>
           </div>
 
@@ -164,6 +170,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
                 <SelectItem value="urgent">Urgent</SelectItem>
               </SelectContent>
             </Select>
+            <FormFieldError error={fieldErrors.priority} />
           </div>
 
           <div className="flex space-x-4 pt-2">
@@ -172,17 +179,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow" 
               disabled={loading}
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Submit Request
-                </>
-              )}
+              {loading ? <Loader className="h-5 w-5" /> : <><Send className="h-4 w-4 mr-2" />Submit Request</>}
             </Button>
             <Button 
               type="button" 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Shield, Users, Briefcase, Clock, CheckCircle, XCircle, LogOut, Eye, Check, X } from "lucide-react"
+import { Shield, Users, Briefcase, Clock, CheckCircle, XCircle, LogOut, Eye, Check, X, Menu } from "lucide-react"
 import { projectAPI, authAPI } from "@/lib/api"
 import { formatRelativeTime } from "@/lib/utils"
 import { NotificationBell } from "@/components/NotificationBell"
@@ -14,6 +14,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { AuthGuard } from "@/components/AuthGuard"
+import { Loader } from "@/components/Loader"
+import { FormError } from "@/components/ui/FormError"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface Project {
   _id: string
@@ -33,6 +36,50 @@ interface Project {
     firstName: string
     lastName: string
     email: string
+  }
+}
+
+// Utility functions moved to top-level scope
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case "high":
+      return "bg-red-100 text-red-800"
+    case "medium":
+      return "bg-yellow-100 text-yellow-800"
+    case "low":
+      return "bg-green-100 text-green-800"
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
+}
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "bg-yellow-100 text-yellow-800"
+    case "accepted":
+      return "bg-blue-100 text-blue-800"
+    case "completed":
+      return "bg-green-100 text-green-800"
+    case "rejected":
+      return "bg-red-100 text-red-800"
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
+}
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "Under Review"
+    case "accepted":
+      return "Accepted"
+    case "completed":
+      return "Completed"
+    case "rejected":
+      return "Rejected"
+    default:
+      return status
   }
 }
 
@@ -114,64 +161,6 @@ function AdminDashboardContent() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="h-4 w-4" />
-      case "accepted":
-        return <CheckCircle className="h-4 w-4" />
-      case "completed":
-        return <CheckCircle className="h-4 w-4" />
-      case "rejected":
-        return <XCircle className="h-4 w-4" />
-      default:
-        return <Clock className="h-4 w-4" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
-      case "accepted":
-        return "bg-blue-100 text-blue-800"
-      case "completed":
-        return "bg-green-100 text-green-800"
-      case "rejected":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Under Review"
-      case "accepted":
-        return "Accepted"
-      case "completed":
-        return "Completed"
-      case "rejected":
-        return "Rejected"
-      default:
-        return status
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const pendingProjects = projects.filter(p => p.status === 'pending')
   const acceptedProjects = projects.filter(p => p.status === 'accepted')
   const completedProjects = projects.filter(p => p.status === 'completed')
@@ -179,11 +168,8 @@ function AdminDashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading projects...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader className="h-10 w-10" />
       </div>
     )
   }
@@ -204,7 +190,8 @@ function AdminDashboardContent() {
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          {/* Desktop actions */}
+          <div className="hidden sm:flex items-center space-x-4">
             <NotificationBell />
             <Button 
               variant="ghost" 
@@ -216,16 +203,40 @@ function AdminDashboardContent() {
               Logout
             </Button>
           </div>
+          {/* Mobile hamburger/profile menu */}
+          <div className="flex sm:hidden items-center">
+            <NotificationBell />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="ml-2 p-2">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-2">
+                <div className="flex flex-col space-y-2">
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-red-600"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </header>
 
       {/* Navigation Tabs */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-2 sm:px-4 py-6">
+        <FormError error={error} />
         <div className="flex space-x-1 bg-white p-1 rounded-lg shadow-sm mb-6">
-          <button
-            onClick={() => setActiveTab("requests")}
+            <button
+              onClick={() => setActiveTab("requests")}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "requests"
+                activeTab === "requests"
                 ? "bg-red-100 text-red-700"
                 : "text-gray-600 hover:text-gray-900"
             }`}
@@ -251,8 +262,8 @@ function AdminDashboardContent() {
             }`}
           >
             Accepted ({acceptedProjects.length})
-          </button>
-          <button
+            </button>
+            <button
             onClick={() => setActiveTab("completed")}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               activeTab === "completed"
@@ -261,14 +272,14 @@ function AdminDashboardContent() {
             }`}
           >
             Completed ({completedProjects.length})
-          </button>
+            </button>
         </div>
 
         {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-md">
             {error}
-          </div>
+      </div>
         )}
 
         {/* Stats Cards */}
@@ -311,8 +322,8 @@ function AdminDashboardContent() {
         </div>
 
         {/* Projects List */}
-        <Card>
-          <CardHeader>
+          <Card>
+            <CardHeader>
             <CardTitle>
               {activeTab === "requests" && "All Projects"}
               {activeTab === "pending" && "Pending Projects"}
@@ -320,8 +331,8 @@ function AdminDashboardContent() {
               {activeTab === "completed" && "Completed Projects"}
             </CardTitle>
             <CardDescription>Manage and review project submissions</CardDescription>
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             {(() => {
               let filteredProjects = projects
               if (activeTab === "pending") filteredProjects = pendingProjects
@@ -339,130 +350,22 @@ function AdminDashboardContent() {
               return (
                 <div className="space-y-6">
                   {filteredProjects.map((project) => (
-                    <div key={project._id} className="border rounded-lg p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-xl">{project.title}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Client: {project.client.firstName} {project.client.lastName} ({project.client.email})
-                          </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Submitted {formatRelativeTime(project.createdAt)}
-                          </p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Badge className={getPriorityColor(project.priority)}>
-                            {project.priority} priority
-                          </Badge>
-                          <Badge className={getStatusColor(project.status)}>
-                            <div className="flex items-center space-x-1">
-                              {getStatusIcon(project.status)}
-                              <span>{getStatusText(project.status)}</span>
-                            </div>
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="mb-4">
-                        <h4 className="font-medium mb-2">Project Description:</h4>
-                        <p className="text-gray-700">{project.description}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Category</p>
-                          <p className="text-sm">{project.category}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Budget</p>
-                          <p className="text-sm">{project.budget}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Timeline</p>
-                          <p className="text-sm">{project.timeline}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-600">Priority</p>
-                          <p className="text-sm capitalize">{project.priority}</p>
-                        </div>
-                      </div>
-
-                      {project.status === "accepted" && project.acceptedAt && (
-                        <div className="p-3 bg-green-50 border border-green-200 rounded-md mb-4">
-                          <p className="text-sm text-green-800">
-                            <strong>Accepted:</strong> {formatRelativeTime(project.acceptedAt)}
-                          </p>
-                        </div>
-                      )}
-
-                      {project.status === "rejected" && (
-                        <div className="p-3 bg-red-50 border border-red-200 rounded-md mb-4">
-                          <p className="text-sm text-red-800">
-                            <strong>Rejected:</strong> {formatRelativeTime(project.rejectedAt || '')}
-                          </p>
-                          {project.rejectionReason && (
-                            <p className="text-sm text-red-700 mt-1">
-                              <strong>Reason:</strong> {project.rejectionReason}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                          <span>Created: {formatRelativeTime(project.createdAt)}</span>
-                          <span className="ml-4 font-medium text-green-600">{project.budget}</span>
-                        </div>
-
-                        <div className="flex space-x-2">
-                          {project.status === "pending" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleAcceptProject(project._id)}
-                                disabled={actionLoading}
-                                className="text-green-600 border-green-600 hover:bg-green-50"
-                              >
-                                <Check className="h-4 w-4 mr-2" />
-                                Accept
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedProject(project)
-                                  setShowRejectDialog(true)
-                                }}
-                                disabled={actionLoading}
-                                className="text-red-600 border-red-600 hover:bg-red-50"
-                              >
-                                <X className="h-4 w-4 mr-2" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          {project.status === "accepted" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCompleteProject(project._id)}
-                              disabled={actionLoading}
-                              className="text-green-600 border-green-600 hover:bg-green-50"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Mark Complete
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <AdminProjectCard
+                      key={project._id}
+                      project={project}
+                      onAccept={handleAcceptProject}
+                      onReject={handleRejectProject}
+                      onComplete={handleCompleteProject}
+                      actionLoading={actionLoading}
+                      setSelectedProject={setSelectedProject}
+                      setShowRejectDialog={setShowRejectDialog}
+                    />
                   ))}
                 </div>
               )
             })()}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
       </div>
 
       {/* Reject Project Dialog */}
@@ -474,8 +377,8 @@ function AdminDashboardContent() {
               Are you sure you want to reject "{selectedProject?.title}"? Please provide a reason for rejection.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
+              <div className="space-y-4">
+                    <div>
               <Label htmlFor="rejectionReason">Rejection Reason</Label>
               <Textarea
                 id="rejectionReason"
@@ -484,8 +387,8 @@ function AdminDashboardContent() {
                 placeholder="Please provide a reason for rejecting this project..."
                 rows={3}
               />
-            </div>
-          </div>
+                    </div>
+                  </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -507,6 +410,95 @@ function AdminDashboardContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function AdminProjectCard({ project, onAccept, onReject, onComplete, actionLoading, setSelectedProject, setShowRejectDialog }: any) {
+  return (
+    <div className="rounded-lg border bg-white p-4 mb-4 shadow-sm flex flex-col gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-lg mb-1">{project.title}</h3>
+          <p className="text-xs text-gray-500 mb-1">
+            Client: {project.client.firstName} {project.client.lastName} ({project.client.email})
+          </p>
+          <p className="text-xs text-gray-400 mb-1">
+            Submitted {formatRelativeTime(project.createdAt)}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge className={getPriorityColor(project.priority)}>{project.priority} priority</Badge>
+          <Badge className={getStatusColor(project.status)}>{getStatusText(project.status)}</Badge>
+        </div>
+      </div>
+      <div className="text-xs text-gray-600 mb-2">
+        <span className="block">Category: <span className="font-medium text-gray-800">{project.category}</span></span>
+        <span className="block">Budget: <span className="font-medium text-green-700">{project.budget}</span></span>
+        <span className="block">Timeline: <span className="font-medium text-gray-800">{project.timeline}</span></span>
+        <span className="block">Priority: <span className="font-medium text-gray-800 capitalize">{project.priority}</span></span>
+      </div>
+      <div className="mb-2">
+        <h4 className="font-medium text-sm mb-1">Project Description:</h4>
+        <p className="text-sm text-gray-700 whitespace-pre-line">{project.description}</p>
+      </div>
+      {project.status === "accepted" && project.acceptedAt && (
+        <div className="p-2 bg-green-50 border border-green-200 rounded mb-1 text-xs">
+          <span className="text-green-800 font-medium">Accepted: {formatRelativeTime(project.acceptedAt)}</span>
+        </div>
+      )}
+      {project.status === "rejected" && (
+        <div className="p-2 bg-red-50 border border-red-200 rounded mb-1 text-xs">
+          <span className="text-red-800 font-medium">Rejected: {formatRelativeTime(project.rejectedAt || '')}</span>
+          {project.rejectionReason && (
+            <span className="block text-red-700 mt-1">Reason: {project.rejectionReason}</span>
+          )}
+        </div>
+      )}
+      {project.status === "completed" && (
+        <div className="p-2 bg-green-50 border border-green-200 rounded mb-1 text-xs">
+          <span className="text-green-800 font-medium">Project Completed!</span>
+        </div>
+      )}
+      {/* Action buttons for admin */}
+      <div className="flex flex-wrap gap-2 mt-2">
+        {project.status === "pending" && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onAccept(project._id)}
+              disabled={actionLoading}
+              className="text-green-600 border-green-600 hover:bg-green-50"
+            >
+              Accept
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedProject(project)
+                setShowRejectDialog(true)
+              }}
+              disabled={actionLoading}
+              className="text-red-600 border-red-600 hover:bg-red-50"
+            >
+              Reject
+            </Button>
+          </>
+        )}
+        {project.status === "accepted" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onComplete(project._id)}
+            disabled={actionLoading}
+            className="text-green-600 border-green-600 hover:bg-green-50"
+          >
+            Mark Complete
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

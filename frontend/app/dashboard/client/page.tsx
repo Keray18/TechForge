@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Clock, CheckCircle, XCircle, User, LogOut } from "lucide-react"
+import { Plus, Clock, CheckCircle, XCircle, User, LogOut, Menu } from "lucide-react"
 import Link from "next/link"
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog"
 import { NewProjectForm } from "./newProject/page"
@@ -15,6 +15,9 @@ import { formatRelativeTime } from "@/lib/utils"
 import { NotificationBell } from "@/components/NotificationBell"
 import { useRouter } from "next/navigation"
 import { AuthGuard } from "@/components/AuthGuard"
+import { Loader } from "@/components/Loader"
+import { FormError } from "@/components/ui/FormError"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface Project {
   _id: string
@@ -29,6 +32,97 @@ interface Project {
   acceptedAt?: string
   rejectedAt?: string
   rejectionReason?: string
+}
+
+// Move these functions above ProjectCard so they are in scope
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case "high":
+      return "bg-red-100 text-red-800"
+    case "medium":
+      return "bg-yellow-100 text-yellow-800"
+    case "low":
+      return "bg-green-100 text-green-800"
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
+}
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "bg-yellow-100 text-yellow-800"
+    case "accepted":
+      return "bg-blue-100 text-blue-800"
+    case "completed":
+      return "bg-green-100 text-green-800"
+    case "rejected":
+      return "bg-red-100 text-red-800"
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
+}
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "Under Review"
+    case "accepted":
+      return "Accepted"
+    case "completed":
+      return "Completed"
+    case "rejected":
+      return "Rejected"
+    default:
+      return status
+  }
+}
+
+function ProjectCard({ project }: { project: Project }) {
+  return (
+    <div className="rounded-lg border bg-white p-4 mb-4 shadow-sm flex flex-col gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-lg mb-1">{project.title}</h3>
+          <p className="text-xs text-gray-500 mb-1">
+            Submitted {formatRelativeTime(project.createdAt)}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge className={getPriorityColor(project.priority)}>{project.priority} priority</Badge>
+          <Badge className={getStatusColor(project.status)}>{getStatusText(project.status)}</Badge>
+        </div>
+      </div>
+      <div className="text-xs text-gray-600 mb-2">
+        <span className="block">Category: <span className="font-medium text-gray-800">{project.category}</span></span>
+        <span className="block">Budget: <span className="font-medium text-green-700">{project.budget}</span></span>
+        <span className="block">Timeline: <span className="font-medium text-gray-800">{project.timeline}</span></span>
+        <span className="block">Priority: <span className="font-medium text-gray-800 capitalize">{project.priority}</span></span>
+      </div>
+      <div className="mb-2">
+        <h4 className="font-medium text-sm mb-1">Project Description:</h4>
+        <p className="text-sm text-gray-700 whitespace-pre-line">{project.description}</p>
+      </div>
+      {project.status === "accepted" && project.acceptedAt && (
+        <div className="p-2 bg-green-50 border border-green-200 rounded mb-1 text-xs">
+          <span className="text-green-800 font-medium">Accepted: {formatRelativeTime(project.acceptedAt)}</span>
+        </div>
+      )}
+      {project.status === "rejected" && (
+        <div className="p-2 bg-red-50 border border-red-200 rounded mb-1 text-xs">
+          <span className="text-red-800 font-medium">Rejected: {formatRelativeTime(project.rejectedAt || '')}</span>
+          {project.rejectionReason && (
+            <span className="block text-red-700 mt-1">Reason: {project.rejectionReason}</span>
+          )}
+        </div>
+      )}
+      {project.status === "completed" && (
+        <div className="p-2 bg-green-50 border border-green-200 rounded mb-1 text-xs">
+          <span className="text-green-800 font-medium">Project Completed!</span>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ClientDashboardContent() {
@@ -79,49 +173,6 @@ function ClientDashboardContent() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
-      case "accepted":
-        return "bg-blue-100 text-blue-800"
-      case "completed":
-        return "bg-green-100 text-green-800"
-      case "rejected":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Under Review"
-      case "accepted":
-        return "Accepted"
-      case "completed":
-        return "Completed"
-      case "rejected":
-        return "Rejected"
-      default:
-        return status
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const handleProjectSubmitted = () => {
     setOpen(false)
     fetchProjects() // Refresh the projects list
@@ -129,11 +180,8 @@ function ClientDashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your projects...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader className="h-10 w-10" />
       </div>
     )
   }
@@ -154,7 +202,8 @@ function ClientDashboardContent() {
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          {/* Desktop actions */}
+          <div className="hidden sm:flex items-center space-x-4">
             <NotificationBell />
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
@@ -177,17 +226,46 @@ function ClientDashboardContent() {
               Logout
             </Button>
           </div>
+          {/* Mobile hamburger/profile menu */}
+          <div className="flex sm:hidden items-center">
+            <NotificationBell />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="ml-2 p-2">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-2">
+                <div className="flex flex-col space-y-2">
+                  <Dialog open={open} onOpenChange={setOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="w-full justify-start" variant="ghost">
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Project
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="p-0 bg-transparent border-none shadow-none max-w-3xl">
+                      <NewProjectForm onClose={handleProjectSubmitted} />
+                    </DialogContent>
+                  </Dialog>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-red-600"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-md">
-            {error}
-          </div>
-        )}
+      <main className="container mx-auto px-2 sm:px-4 py-8">
+        <FormError error={error} />
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
@@ -277,60 +355,7 @@ function ClientDashboardContent() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="space-y-4 pt-4">
-                        <div>
-                          <h4 className="font-medium mb-2">Project Description:</h4>
-                          <p className="text-gray-700">{project.description}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">Category</p>
-                            <p className="text-sm">{project.category}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">Budget</p>
-                            <p className="text-sm">{project.budget}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">Timeline</p>
-                            <p className="text-sm">{project.timeline}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">Priority</p>
-                            <p className="text-sm capitalize">{project.priority}</p>
-                          </div>
-                        </div>
-
-                        {project.status === "accepted" && project.acceptedAt && (
-                          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                            <p className="text-sm text-green-800">
-                              <strong>Project Accepted:</strong> {formatRelativeTime(project.acceptedAt)}
-                            </p>
-                          </div>
-                        )}
-
-                        {project.status === "rejected" && (
-                          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                            <p className="text-sm text-red-800">
-                              <strong>Project Rejected:</strong> {formatRelativeTime(project.rejectedAt || '')}
-                            </p>
-                            {project.rejectionReason && (
-                              <p className="text-sm text-red-700 mt-1">
-                                <strong>Reason:</strong> {project.rejectionReason}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {project.status === "completed" && (
-                          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                            <p className="text-sm text-green-800">
-                              <strong>Project Completed!</strong> Your project has been successfully delivered.
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      <ProjectCard project={project} />
                     </AccordionContent>
                   </AccordionItem>
                 ))}
