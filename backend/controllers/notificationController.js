@@ -144,6 +144,8 @@ const deleteNotification = async (req, res) => {
     }
 };
 
+
+
 module.exports = {
     getUserNotifications,
     markNotificationAsRead,

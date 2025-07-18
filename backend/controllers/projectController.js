@@ -1,6 +1,13 @@
 const Project = require("../models/projectModel");
 const User = require("../models/usersModel");
 const Notification = require("../models/notificationModel");
+const multer = require('multer');
+const nodemailer = require('nodemailer');
+const dotenv = require('dotenv');
+dotenv.config();
+
+const upload = multer({ storage: multer.memoryStorage() });
+
 
 // Submit new project
 const submitProject = async (req, res) => {
@@ -9,7 +16,7 @@ const submitProject = async (req, res) => {
         const clientId = req.user.id;
 
         // Validate required fields
-        if (!title || !category || !description || !budget || !timeline || !priority) {
+        if (!title || !category || !description || !budget || !timeline || !priority || !req.file) {
             return res.status(400).json({
                 success: false,
                 message: 'All fields are required'
@@ -28,6 +35,38 @@ const submitProject = async (req, res) => {
 
         const client = await User.findById(clientId);
         const adminUsers = await User.find({ role: 'admin' });
+        const clientMail = client.email;
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: process.env.EMAIL_USER,
+            subject: `${title} project - ${client.lastName}`,
+            text: `
+            A new project has been submitted by ${client.firstName} ${client.lastName}.
+            Project Title: ${title}
+            Project Category: ${category}
+            Project Description: ${description}
+            Project Budget: ${budget}
+            Project Timeline: ${timeline}
+            Project Priority: ${priority}
+            For Contact: ${client.phone}
+
+            Please review the project and take appropriate action.`,
+            attachments: req.file ? [
+                {
+                    filename: req.file.originalname,
+                    content: req.file.buffer,
+                },
+            ] : [],
+        }
+        await transporter.sendMail(mailOptions);
 
         console.log(`Found ${adminUsers.length} admin users for notifications`);
         console.log('Admin users:', adminUsers.map(admin => ({ id: admin._id, email: admin.email, role: admin.role })));
@@ -314,6 +353,55 @@ const getProjectById = async (req, res) => {
     }
 };
 
+// Filter Projects
+const filterProjects = async (req, res) => {
+    try {
+        const { search, status, sortBy='createdAt', order='desc', page=1, limit=10 } = req.query;
+        const ALLOWED_SORT_FIELDS = ['createdAt', 'title', 'status', 'budget'];
+        
+
+        if (!ALLOWED_SORT_FIELDS.includes(sortBy)) sortBy = 'createdAt';
+        if (!['asc', 'desc'].includes(order)) order = 'desc';
+        page = Math.max(1, parseInt(page));
+        limit = Math.max(1, Math.min(100, parseInt(limit)));
+
+        let query = {};
+        if(search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+                { industry: { $regex: search, $options: 'i' } },
+            ]
+        };
+
+        if(status) {
+            query.status = status;
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const projects = await Project.find(query)
+            .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await Project.countDocuments(query);
+
+        res.status(200).json({
+            success: true,
+            projects,
+            totalPages: Math.ceil(total / limit),
+            currentPage: parseInt(page)
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error filtering projects',
+            error: error.message
+        });
+    }
+}
+
 module.exports = {
     submitProject,
     getAllProjects,
@@ -321,7 +409,8 @@ module.exports = {
     acceptProject,
     rejectProject,
     completeProject,
-    getProjectById
+    getProjectById,
+    filterProjects
 };
 
 

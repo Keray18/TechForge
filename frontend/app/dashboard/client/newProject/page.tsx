@@ -24,6 +24,7 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
     timeline: "",
     priority: "",
   })
+  const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<any>({})
@@ -38,15 +39,30 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
     errors.budget = validateRequired(formData.budget, "Budget")
     errors.timeline = validateRequired(formData.timeline, "Timeline")
     errors.priority = validateRequired(formData.priority, "Priority")
+    errors.document = !file ? "Document is required" : undefined
     setFieldErrors(errors)
     if (Object.values(errors).some(Boolean)) return
     try {
       setLoading(true)
       setError("")
-      const response = await projectAPI.submitProject(formData)
+      // Use FormData for file upload
+      const fd = new FormData()
+      Object.entries(formData).forEach(([key, value]) => fd.append(key, value))
+      if (file) fd.append('document', file)
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const token = typeof window !== "undefined" ? localStorage.getItem('authToken') : null;
+      const response = await fetch(`${backendUrl}/projects/submit`, {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      })
+      if (!response.ok) throw new Error((await response.json()).message || 'Failed to submit project')
       onClose()
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to submit project. Please try again.")
+      setError(err.message || "Failed to submit project. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -171,6 +187,20 @@ export function NewProjectForm({ onClose }: { onClose: () => void }) {
               </SelectContent>
             </Select>
             <FormFieldError error={fieldErrors.priority} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="document">Attach Document <span className="text-red-500">*</span></Label>
+            <Input
+              id="document"
+              name="document"
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+              onChange={e => setFile(e.target.files?.[0] || null)}
+              disabled={loading}
+              required
+            />
+            <FormFieldError error={fieldErrors.document} />
           </div>
 
           <div className="flex space-x-4 pt-2">

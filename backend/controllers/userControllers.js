@@ -2,16 +2,20 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/usersModel');
 const { ROLE_PERMISSIONS } = require('../config/roles');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const dotenv = require('dotenv');
 dotenv.config();
+
+const URL = process.env.NODE_ENV === 'production' ? 'https://tech-forge-seven.vercel.app' : 'http://localhost:3000';
 
 // Register User
 const registerUser = async (req, res) => {
     try {
         const { firstName, lastName, industry, company, email, phone, password, confirmPassword } = req.body;
         
-        // Validate required fields
-        if (!firstName || !lastName || !industry || !company || !email || !phone || !password || !confirmPassword) {
+        // Validate required fields (company is optional)
+        if (!firstName || !lastName || !industry || !email || !phone || !password || !confirmPassword) {
             return res.status(400).json({ 
                 success: false,
                 message: "All fields are required" 
@@ -44,18 +48,44 @@ const registerUser = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // If company is empty or missing, set to 'individual'
+        const companyValue = company && company.trim() !== '' ? company : 'individual';
+
         // Create user with default role and permissions
         const user = await User.create({
             firstName,
             lastName,
             industry,
-            company,
+            company: companyValue,
             email,
             phone,
             password: hashedPassword,
             role: 'client',
             permissions: ROLE_PERMISSIONS.client
         });
+
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        user.verificationToken = verificationToken;
+        await user.save();
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const verifyUrl = `${URL}/verify-email?token=${verificationToken}`;
+        const mail = await transporter.sendMail({
+            to: user.email,
+            from: process.env.EMAIL_USER,
+            subject: 'Verify your email',
+            html: `<a href="${verifyUrl}">Click here to verify your email</a>`
+        })
+
+        console.log(mail);
+
 
         const token = jwt.sign({ usrId: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
@@ -102,6 +132,11 @@ const loginUser = async (req, res) => {
                 message: "User does not exist" 
             });
         }
+
+        // Check if email is verified
+        if (!user.verified) {
+            return res.status(401).json({ success: false, message: "Please verify your email before logging in." });
+          }
 
         // Check if account is active
         if (!user.isActive) {
@@ -166,8 +201,24 @@ const getCurrentUser = async (req, res) => {
     }
 };
 
+
+// Delete Project
+
+
+// verify User
+const verifyUser = async (req, res) => {
+    const { token } = req.query;
+    const user = await User.findOne({verificationToken: token});
+    if (!user) return res.status(400).send('Invalid or expired token');
+    user.verified = true;
+    user.verificationToken = undefined;
+    await user.save();
+    res.send('Email verified successfully');
+}
+
 module.exports = { 
     registerUser, 
     loginUser, 
-    getCurrentUser 
+    getCurrentUser,
+    verifyUser 
 };

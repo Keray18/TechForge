@@ -8,14 +8,28 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+const allowedOrigins = process.env.NODE_ENV === "production" ? ['https://tech-forge-seven.vercel.app/'] : ['http://localhost:3000']
+
 const app = express();
 const port = process.env.PORT || 5000;
 
 
 connectDB();
 
+// Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
+if(process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+        if(req.headers['x-forwarded-proto'] !== 'https') {
+            return res.redirect(`https://${req.headers.host}${req.url}`);
+        }
+        next();
+    });
+}
 
 // Routes
 app.use("/", userRoutes);

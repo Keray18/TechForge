@@ -36,7 +36,7 @@ export default function LoginPage() {
     const passwordError = validatePassword(formData.password)
     setFieldErrors({ email: emailError || undefined, password: passwordError || undefined })
     if (emailError || passwordError) return
-
+    
     try {
       setLoading(true)
       setError("")
@@ -60,7 +60,12 @@ export default function LoginPage() {
     } catch (err: any) {
       // Handle login error
       console.error("Login error:", err)
-      setError(err.response?.data?.message || "Invalid email or password. Please try again.")
+      const backendMsg = err.response?.data?.message || "";
+      if (err.response?.status === 401 && backendMsg.toLowerCase().includes("verify")) {
+        setError("Please complete email verification before logging in.");
+      } else {
+        setError(backendMsg || "Invalid email or password. Please try again.");
+      }
     } finally {
       setLoading(false)
     }

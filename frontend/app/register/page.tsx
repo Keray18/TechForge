@@ -54,11 +54,8 @@ export default function RegisterPage() {
       setLoading(true)
       setError("")
       
-      // Prepare data for API (remove confirmPassword)
-      const { confirmPassword, ...apiData } = formData
-      
-      // Call the register API
-      const response = await authAPI.register(apiData)
+      // Prepare data for API (do not remove confirmPassword)
+      const response = await authAPI.register(formData)
       
       // Handle successful registration
       console.log("Registration successful:", response)
@@ -158,16 +155,13 @@ export default function RegisterPage() {
                       <SelectValue placeholder="Select your industry" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="technology">Technology</SelectItem>
-                      <SelectItem value="healthcare">Healthcare</SelectItem>
-                      <SelectItem value="finance">Finance & Banking</SelectItem>
-                      <SelectItem value="education">Education</SelectItem>
-                      <SelectItem value="retail">Retail & E-commerce</SelectItem>
-                      <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                      <SelectItem value="media">Media & Entertainment</SelectItem>
-                      <SelectItem value="consulting">Consulting</SelectItem>
-                      <SelectItem value="nonprofit">Non-profit</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="IT">IT</SelectItem>
+                      <SelectItem value="Finance">Finance</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Education">Education</SelectItem>
+                      <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                      <SelectItem value="Retail">Retail</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormFieldError error={fieldErrors.industry} />
@@ -218,12 +212,12 @@ export default function RegisterPage() {
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <div className="relative">
-                    <Input
-                      id="password"
+                  <Input
+                    id="password"
                       type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) => handleChange("password", e.target.value)}
-                      required
+                    value={formData.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    required
                       className="w-full pr-10"
                     />
                     <button
@@ -242,12 +236,12 @@ export default function RegisterPage() {
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <div className="relative">
-                    <Input
-                      id="confirmPassword"
+                  <Input
+                    id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                      required
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                    required
                       className="w-full pr-10"
                     />
                     <button

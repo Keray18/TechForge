@@ -17,6 +17,7 @@ import { AuthGuard } from "@/components/AuthGuard"
 import { Loader } from "@/components/Loader"
 import { FormError } from "@/components/ui/FormError"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
 
 interface Project {
   _id: string
@@ -40,17 +41,17 @@ interface Project {
 }
 
 // Utility functions moved to top-level scope
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case "high":
-      return "bg-red-100 text-red-800"
-    case "medium":
-      return "bg-yellow-100 text-yellow-800"
-    case "low":
-      return "bg-green-100 text-green-800"
-    default:
-      return "bg-gray-100 text-gray-800"
-  }
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return "bg-red-100 text-red-800"
+      case "medium":
+        return "bg-yellow-100 text-yellow-800"
+      case "low":
+        return "bg-green-100 text-green-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
 }
 
 const getStatusColor = (status: string) => {
@@ -93,23 +94,39 @@ function AdminDashboardContent() {
   const [rejectionReason, setRejectionReason] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [search, setSearch] = useState("")
+  const [sortBy, setSortBy] = useState("createdAt")
+  const [order, setOrder] = useState("desc")
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
   const router = useRouter()
 
   useEffect(() => {
     fetchProjects()
     const currentUser = authAPI.getCurrentUser()
     setUser(currentUser)
-  }, [])
+    // eslint-disable-next-line
+  }, [search, sortBy, order, page, limit])
 
   const fetchProjects = async () => {
     try {
       setLoading(true)
-      const response = await projectAPI.getAllProjects()
-      // Backend returns { success: true, projects: [...] }
-      setProjects(response.projects || [])
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const params = new URLSearchParams({
+        search,
+        sortBy,
+        order,
+        page: String(page),
+        limit: String(limit),
+      })
+      const response = await fetch(`${backendUrl}/projects/filter?${params.toString()}`, { credentials: 'include' })
+      if (!response.ok) throw new Error('Failed to fetch projects')
+      const data = await response.json()
+      setProjects(data.projects || [])
+      setTotalPages(data.totalPages || 1)
     } catch (error: any) {
-      console.error('Failed to fetch projects:', error)
-      setError(error.response?.data?.message || 'Failed to load projects')
+      setError(error.message || 'Failed to load projects')
     } finally {
       setLoading(false)
     }
@@ -219,9 +236,9 @@ function AdminDashboardContent() {
                     className="w-full justify-start text-red-600"
                     onClick={handleLogout}
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </Button>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -232,6 +249,39 @@ function AdminDashboardContent() {
       {/* Navigation Tabs */}
       <div className="container mx-auto px-2 sm:px-4 py-6">
         <FormError error={error} />
+        {/* Search, Sort, and Pagination Controls */}
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
+          <Input
+            placeholder="Search projects..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-64"
+          />
+          <Select value={sortBy} onValueChange={v => setSortBy(v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt">Newest</SelectItem>
+              <SelectItem value="title">Title</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={order} onValueChange={v => setOrder(v)}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Order" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Descending</SelectItem>
+              <SelectItem value="asc">Ascending</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</Button>
+            <span>Page {page} of {totalPages}</span>
+            <Button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</Button>
+          </div>
+        </div>
         <div className="flex space-x-1 bg-white p-1 rounded-lg shadow-sm mb-6">
             <button
               onClick={() => setActiveTab("requests")}
@@ -249,8 +299,8 @@ function AdminDashboardContent() {
               activeTab === "pending"
                 ? "bg-yellow-100 text-yellow-700"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
+              }`}
+            >
             Pending ({pendingProjects.length})
           </button>
           <button
@@ -269,8 +319,8 @@ function AdminDashboardContent() {
               activeTab === "completed"
                 ? "bg-green-100 text-green-700"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
+              }`}
+            >
             Completed ({completedProjects.length})
             </button>
         </div>
@@ -360,8 +410,8 @@ function AdminDashboardContent() {
                       setSelectedProject={setSelectedProject}
                       setShowRejectDialog={setShowRejectDialog}
                     />
-                  ))}
-                </div>
+                ))}
+              </div>
               )
             })()}
             </CardContent>
@@ -458,7 +508,7 @@ function AdminProjectCard({ project, onAccept, onReject, onComplete, actionLoadi
       {project.status === "completed" && (
         <div className="p-2 bg-green-50 border border-green-200 rounded mb-1 text-xs">
           <span className="text-green-800 font-medium">Project Completed!</span>
-        </div>
+              </div>
       )}
       {/* Action buttons for admin */}
       <div className="flex flex-wrap gap-2 mt-2">
