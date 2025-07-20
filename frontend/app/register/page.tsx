@@ -15,8 +15,9 @@ import { Loader } from "@/components/Loader"
 import { FormError } from "@/components/ui/FormError"
 import { FormFieldError } from "@/components/ui/FormFieldError"
 import { validateEmail, validatePassword, validateRequired } from "@/lib/validation"
+import { GuestGuard } from "@/components/GuestGuard"
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -294,5 +295,13 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <GuestGuard>
+      <RegisterPageContent />
+    </GuestGuard>
   )
 }

@@ -6,6 +6,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const cors = require("cors");
 const dotenv = require("dotenv");
 
+
 dotenv.config();
 
 const allowedOrigins = process.env.NODE_ENV === "production" ? ['https://tech-forge-seven.vercel.app/'] : ['http://localhost:3000']
@@ -15,6 +16,8 @@ const port = process.env.PORT || 5000;
 
 
 connectDB();
+
+
 
 // Middleware
 app.use(express.json());

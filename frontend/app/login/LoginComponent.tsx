@@ -49,14 +49,31 @@ export default function LoginPage() {
       
       // Store auth data
       if (response.token && response.user) {
+        console.log('Storing auth data:', { token: response.token.substring(0, 20) + '...', user: response.user });
         authAPI.setAuthData(response.token, response.user)
+        
+        // Verify storage
+        const storedToken = localStorage.getItem('authToken');
+        const storedUser = localStorage.getItem('user');
+        console.log('Stored token:', !!storedToken);
+        console.log('Stored user:', !!storedUser);
+      } else {
+        console.error('No token or user in response:', response);
       }
       
       // Get user role and redirect accordingly
       const userRole = response.user?.role || "client"
       
+      // Map roles to dashboard routes
+      let dashboardRoute = "/dashboard/client"
+      if (userRole === "admin") {
+        dashboardRoute = "/dashboard/admin"
+      } else if (userRole === "lancer") {
+        dashboardRoute = "/dashboard/lancer"
+      }
+      
       // Redirect to appropriate dashboard
-      router.push(`/dashboard/${userRole}`)
+      router.push(dashboardRoute)
     } catch (err: any) {
       // Handle login error
       console.error("Login error:", err)

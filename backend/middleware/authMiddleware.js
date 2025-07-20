@@ -44,6 +44,10 @@ const protect = async (req, res, next) => {
 // Role-based middleware
 const requireRole = (...roles) => {
     return (req,res,next) => {
+        console.log('requireRole middleware - User role:', req.user.role);
+        console.log('requireRole middleware - Required roles:', roles);
+        console.log('requireRole middleware - User permissions:', req.user.permissions);
+        
         if(!req.user) {
             return res.status(401).json({
                 success: false,
@@ -52,12 +56,14 @@ const requireRole = (...roles) => {
         }
 
         if(!roles.includes(req.user.role)) {
+            console.log('requireRole middleware - Access denied: role mismatch');
             return res.status(403).json({
                 success: false,
                 message: `Access denied. Required roles: ${roles.join(', ')}`
             });
         }
 
+        console.log('requireRole middleware - Role check passed');
         next();
     }
 };
@@ -66,6 +72,10 @@ const requireRole = (...roles) => {
 // Permission-based middleware
 const requirePermission = (permission) => {
     return(req, res, next) => {
+        console.log('requirePermission middleware - Required permission:', permission);
+        console.log('requirePermission middleware - User permissions:', req.user.permissions);
+        console.log('requirePermission middleware - User hasPermission result:', req.user.hasPermission(permission));
+        
         if(!req.user) {
             return res.status(401).json({
                 success: false,
@@ -73,11 +83,14 @@ const requirePermission = (permission) => {
             });
         }
         if(!req.user.hasPermission(permission)) {
+            console.log('requirePermission middleware - Access denied: permission missing');
             return res.status(403).json({
                 success: false,
                 message: `Access denied. Required permission: ${permission}.`
             });
         }
+        
+        console.log('requirePermission middleware - Permission check passed');
         next();
     }
 };

@@ -11,10 +11,11 @@ import { Plus, LogOut, Menu, Bell } from "lucide-react"
 import { NewProjectForm } from "./newProject/page"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { AuthGuard } from "@/components/AuthGuard"
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
-export default function ClientDashboard() {
+function ClientDashboardContent() {
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -126,5 +127,13 @@ export default function ClientDashboard() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function ClientDashboard() {
+  return (
+    <AuthGuard requiredRole="client">
+      <ClientDashboardContent />
+    </AuthGuard>
   )
 }

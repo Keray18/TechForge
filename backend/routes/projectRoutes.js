@@ -20,9 +20,15 @@ const upload = multer({ storage: multer.memoryStorage() });
 // client Routes
 router.post('/submit', protect, upload.single('document'), requirePermission(PERMISSIONS.CREATE_PROJECT), submitProject);
 router.get('/client', protect, requirePermission(PERMISSIONS.VIEW_OWN_PROJECTS), getClientProjects);
-router.get('/:projectId', protect, requireAnyPermission([PERMISSIONS.VIEW_OWN_PROJECTS, PERMISSIONS.VIEW_ALL_PROJECTS]), getProjectById);
 
-// Admin/Employee routes
+// Admin/Employee routes - SPECIFIC ROUTES FIRST
+router.get('/filter', 
+    protect, 
+    requireRole(ROLES.EMPLOYEE, ROLES.ADMIN),
+    requirePermission(PERMISSIONS.VIEW_ALL_PROJECTS), 
+    filterProjects
+);
+
 router.get('/', protect, 
     requireRole(ROLES.EMPLOYEE, ROLES.ADMIN),
     requirePermission(PERMISSIONS.VIEW_ALL_PROJECTS), getAllProjects
@@ -43,15 +49,10 @@ router.put('/:projectId/reject',
 router.put('/:projectId/complete', 
     protect, 
     requireRole(ROLES.EMPLOYEE, ROLES.ADMIN),
-    requirePermission(PERMISSIONS.COMPLETE_PROJECT), completeProject);
-
-
-router.get('/filter', 
-    protect, 
-    requireRole(ROLES.EMPLOYEE, ROLES.ADMIN),
-    requirePermission(PERMISSIONS.VIEW_ALL_PROJECTS), 
-    filterProjects
+    requirePermission(PERMISSIONS.COMPLETE_PROJECT), completeProject
 );
 
+// PARAMETER ROUTES LAST
+router.get('/:projectId', protect, requireAnyPermission([PERMISSIONS.VIEW_OWN_PROJECTS, PERMISSIONS.VIEW_ALL_PROJECTS]), getProjectById);
 
 module.exports = router;

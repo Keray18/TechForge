@@ -112,21 +112,30 @@ function AdminDashboardContent() {
   const fetchProjects = async () => {
     try {
       setLoading(true)
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-      const params = new URLSearchParams({
+      
+      // Debug: Check if token exists
+      const token = localStorage.getItem('authToken');
+      console.log('Token exists:', !!token);
+      console.log('Token:', token ? token.substring(0, 20) + '...' : 'No token');
+      
+      const params = {
         search,
         sortBy,
         order,
         page: String(page),
         limit: String(limit),
-      })
-      const response = await fetch(`${backendUrl}/projects/filter?${params.toString()}`, { credentials: 'include' })
-      if (!response.ok) throw new Error('Failed to fetch projects')
-      const data = await response.json()
+      }
+      
+      console.log('Calling filterProjects with params:', params);
+      const data = await projectAPI.filterProjects(params)
+      console.log('API response:', data);
+      
       setProjects(data.projects || [])
       setTotalPages(data.totalPages || 1)
     } catch (error: any) {
-      setError(error.message || 'Failed to load projects')
+      console.error('Fetch projects error:', error);
+      console.error('Error response:', error.response);
+      setError(error.response?.data?.message || error.message || 'Failed to load projects')
     } finally {
       setLoading(false)
     }

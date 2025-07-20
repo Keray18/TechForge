@@ -20,8 +20,13 @@ api.interceptors.request.use(
       !config.url.endsWith('/register')
     ) {
       const token = localStorage.getItem('authToken');
+      console.log('API Request:', config.url);
+      console.log('Token found:', !!token);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log('Authorization header added');
+      } else {
+        console.log('No token found, skipping Authorization header');
       }
     }
     return config;
@@ -88,6 +93,11 @@ export const projectAPI = {
   getAllProjects: async () => {
     const response = await api.get('/projects');
     // Backend returns { success: true, projects: [...] }
+    return response.data;
+  },
+  
+  filterProjects: async (params: any) => {
+    const response = await api.get('/projects/filter', { params });
     return response.data;
   },
   

@@ -359,18 +359,17 @@ const filterProjects = async (req, res) => {
         const { search, status, sortBy='createdAt', order='desc', page=1, limit=10 } = req.query;
         const ALLOWED_SORT_FIELDS = ['createdAt', 'title', 'status', 'budget'];
         
-
-        if (!ALLOWED_SORT_FIELDS.includes(sortBy)) sortBy = 'createdAt';
-        if (!['asc', 'desc'].includes(order)) order = 'desc';
-        page = Math.max(1, parseInt(page));
-        limit = Math.max(1, Math.min(100, parseInt(limit)));
+        let validatedSortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
+        let validatedOrder = ['asc', 'desc'].includes(order) ? order : 'desc';
+        let validatedPage = Math.max(1, parseInt(page));
+        let validatedLimit = Math.max(1, Math.min(100, parseInt(limit)));
 
         let query = {};
         if(search) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },
                 { description: { $regex: search, $options: 'i' } },
-                { industry: { $regex: search, $options: 'i' } },
+                { category: { $regex: search, $options: 'i' } },
             ]
         };
 
@@ -378,22 +377,25 @@ const filterProjects = async (req, res) => {
             query.status = status;
         }
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const skip = (validatedPage - 1) * validatedLimit;
 
         const projects = await Project.find(query)
-            .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
+            .populate('client', 'firstName lastName email company')
+            .sort({ [validatedSortBy]: validatedOrder === 'desc' ? -1 : 1 })
             .skip(skip)
-            .limit(parseInt(limit));
+            .limit(validatedLimit);
 
         const total = await Project.countDocuments(query);
 
         res.status(200).json({
             success: true,
             projects,
-            totalPages: Math.ceil(total / limit),
-            currentPage: parseInt(page)
+            totalPages: Math.ceil(total / validatedLimit),
+            currentPage: validatedPage,
+            total
         });
     } catch (error) {
+        console.error('Error filtering projects:', error);
         res.status(500).json({
             success: false,
             message: 'Error filtering projects',

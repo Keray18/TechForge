@@ -1,6 +1,6 @@
 const ROLES = {
     CLIENT: 'client',
-    EMPLOYEE: 'lancer',
+    EMPLOYEE: 'employee',
     ADMIN: 'admin'
 };
 
