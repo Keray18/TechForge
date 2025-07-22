@@ -1,6 +1,4 @@
-import dynamic from "next/dynamic";
-
-const VerifyEmailClient = dynamic(() => import("./VerifyEmailClient"), { ssr: false });
+import VerifyEmailClient from "./VerifyEmailClient";
 
 export default function VerifyEmailPage() {
   return <VerifyEmailClient />;
