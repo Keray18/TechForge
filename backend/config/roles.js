@@ -19,6 +19,10 @@ const PERMISSIONS = {
     SEND_NOTIFICATIONS: 'send_notifications',
     DELETE_NOTIFICATIONS: 'delete_notifications',
     
+    // User management permissions
+    VIEW_ALL_USERS: 'view_all_users',
+    MANAGE_USERS: 'manage_users',
+    
 }
 
 

@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const router = useRouter()
   const searchParams = useSearchParams()
-  const justRegistered = searchParams.get('registered') === 'true'
+  // const justRegistered = searchParams.get('registered') === 'true'
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const [showPassword, setShowPassword] = useState(false)
 
@@ -104,12 +104,12 @@ export default function LoginPage() {
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>Sign in to access your dashboard</CardDescription>
           
-          {/* Show success message if user just registered */}
+          {/* Show success message if user just registered
           {justRegistered && (
             <div className="mt-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-md text-sm">
               Registration successful! Please sign in with your new account.
             </div>
-          )}
+          )} */}
         </CardHeader>
         <CardContent>
           <FormError error={error} />
@@ -156,14 +156,14 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          {/* <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{" "}
               <Link href="/register" className="text-blue-600 hover:underline">
                 Sign up
               </Link>
             </p>
-          </div>
+          </div> */}
 
           <div className="mt-4">
             <Link href="/" className="flex items-center justify-center text-sm text-gray-600 hover:text-gray-900">

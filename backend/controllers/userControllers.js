@@ -9,13 +9,13 @@ dotenv.config();
 
 const URL = process.env.NODE_ENV === 'production' ? 'https://tech-forge-seven.vercel.app' : 'http://localhost:3000';
 
-// Register User
+// Register Client
 const registerUser = async (req, res) => {
     try {
-        const { firstName, lastName, industry, company, email, phone, password, confirmPassword } = req.body;
+        const { firstName, lastName, email, company } = req.body;
         
         // Validate required fields (company is optional)
-        if (!firstName || !lastName || !industry || !email || !phone || !password || !confirmPassword) {
+        if (!firstName || !lastName || !email) {
             return res.status(400).json({ 
                 success: false,
                 message: "All fields are required" 
@@ -31,20 +31,30 @@ const registerUser = async (req, res) => {
             });
         }
 
-        // Validate password
-        if (password !== confirmPassword) {
-            return res.status(400).json({ 
-                success: false,
-                message: "Passwords do not match" 
-            });
-        }
+        // Generate password
+        const password = crypto.randomBytes(8).toString('hex');
+        
+        // Send Email to the client
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
 
-        if (password.length < 6) {
-            return res.status(400).json({
-                success: false,
-                message: "Password must be at least 6 characters long"
-            });
-        }
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: "Your account has been created Successfully!",
+            html: `
+                <h1>Welcome to The Code End ${firstName}</h1>
+                <p>Your emailID is: ${email}</p>
+                <p>Your password is: ${password}</p>
+                <p>Please follow the link to login to your account to continue.</p>
+                <a href="${URL}/login">Login</a>
+            `
+        })
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -55,37 +65,12 @@ const registerUser = async (req, res) => {
         const user = await User.create({
             firstName,
             lastName,
-            industry,
             company: companyValue,
             email,
-            phone,
             password: hashedPassword,
             role: 'client',
             permissions: ROLE_PERMISSIONS.client
         });
-
-        const verificationToken = crypto.randomBytes(32).toString('hex');
-        user.verificationToken = verificationToken;
-        await user.save();
-
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
-
-        const verifyUrl = `${URL}/verify-email?token=${verificationToken}`;
-        const mail = await transporter.sendMail({
-            to: user.email,
-            from: process.env.EMAIL_USER,
-            subject: 'Verify your email',
-            html: `<a href="${verifyUrl}">Click here to verify your email</a>`
-        })
-
-        console.log(mail);
-
 
         const token = jwt.sign({ usrId: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
@@ -132,11 +117,6 @@ const loginUser = async (req, res) => {
                 message: "User does not exist" 
             });
         }
-
-        // Check if email is verified
-        if (!user.verified) {
-            return res.status(401).json({ success: false, message: "Please verify your email before logging in." });
-          }
 
         // Check if account is active
         if (!user.isActive) {
@@ -201,24 +181,65 @@ const getCurrentUser = async (req, res) => {
     }
 };
 
+// Get all users (Admin only)
+const getAllUsers = async (req, res) => {
+    try {
+        // Check if user has admin role or view_all_users permission
+        if (req.user.role !== 'admin' && !req.user.permissions.includes('view_all_users')) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Admin privileges required.'
+            });
+        }
+
+        // Get all users excluding password field
+        const users = await User.find({}).select('-password');
+        
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            users: users.map(user => ({
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                company: user.company,
+                role: user.role,
+                isActive: user.isActive,
+                verified: user.verified,
+                createdAt: user.createdAt,
+                lastLogin: user.lastLogin
+            }))
+        });
+    } catch (error) {
+        console.error('Get all users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching users',
+            error: error.message
+        });
+    }
+};
+
 
 // Delete Project
 
 
 // verify User
-const verifyUser = async (req, res) => {
-    const { token } = req.query;
-    const user = await User.findOne({verificationToken: token});
-    if (!user) return res.status(400).send('Invalid or expired token');
-    user.verified = true;
-    user.verificationToken = undefined;
-    await user.save();
-    res.send('Email verified successfully');
-}
+// const verifyUser = async (req, res) => {
+//     const { token } = req.query;
+//     const user = await User.findOne({verificationToken: token});
+//     if (!user) return res.status(400).send('Invalid or expired token');
+//     user.verified = true;
+//     user.verificationToken = undefined;
+//     await user.save();
+//     res.send('Email verified successfully');
+// }
 
 module.exports = { 
     registerUser, 
     loginUser, 
     getCurrentUser,
-    verifyUser 
+    getAllUsers,
+    // verifyUser 
 };

@@ -39,7 +39,7 @@ export default function HomePage() {
                 Login
               </Button>
             </Link>
-            <Link href="/register">
+            <Link href="https://thecodeend.vercel.app/">
               <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                 Get Started
               </Button>
@@ -67,7 +67,7 @@ export default function HomePage() {
             A focused platform that is built on trust and craft, we help you turn your tech needs into tailored applications.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link href="/register">
+            <Link href="https://thecodeend.vercel.app/">
               <Button
                 size="lg"
                 className="px-8 py-4 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
@@ -378,7 +378,7 @@ export default function HomePage() {
             efficiently.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
+            <Link href="https://thecodeend.vercel.app/">
               <Button
                 size="lg"
                 className="px-8 py-4 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"

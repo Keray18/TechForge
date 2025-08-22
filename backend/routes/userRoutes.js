@@ -1,8 +1,8 @@
 const express = require("express");
-const { registerUser, loginUser, verifyUser } = require("../controllers/userControllers");
+const { registerUser, loginUser, getAllUsers, verifyUser } = require("../controllers/userControllers");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, requireRole, requirePermission } = require("../middleware/authMiddleware");
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -13,7 +13,10 @@ const authLimiter = rateLimit({
 
 router.post("/register", authLimiter, registerUser);
 router.post("/login", loginUser);
-router.get("/verify", verifyUser);
+// router.get("/verify", verifyUser);
+
+// Get all users (Admin only)
+router.get("/all", protect, requireRole('admin'), getAllUsers);
 
 // Debug endpoint to check user permissions
 router.get('/debug', protect, (req, res) => {

@@ -13,11 +13,6 @@ const userSchema = new mongoose.Schema({
         trim: true,
         maxlength: 50
     },
-    industry: {
-        type: String,
-        required: true,
-        enum: ['IT', 'Finance', 'Healthcare', 'Education', 'Manufacturing', 'Retail', 'Other']
-    },
     company: {
         type: String,
         trim: true,
@@ -27,11 +22,6 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         unique: true,
-        required: true,
-        trim: true
-    },
-    phone: {
-        type: String,
         required: true,
         trim: true
     },
@@ -72,13 +62,6 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
-    verified: {
-        type: Boolean,
-        default: false
-    },
-    verificationToken: {
-        type: String
-    }
 }, {
     timestamps: true
 });

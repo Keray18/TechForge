@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Shield, Users, Briefcase, Clock, CheckCircle, XCircle, LogOut, Eye, Check, X, Menu } from "lucide-react"
+import { Shield, Users, Briefcase, Clock, CheckCircle, XCircle, LogOut, Eye, Check, X, Menu, Loader2 } from "lucide-react"
 import { projectAPI, authAPI } from "@/lib/api"
 import { formatRelativeTime } from "@/lib/utils"
 import { NotificationBell } from "@/components/NotificationBell"
@@ -18,6 +18,7 @@ import { Loader } from "@/components/Loader"
 import { FormError } from "@/components/ui/FormError"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
+import ClientManagement from "./ClientManagement"
 
 interface Project {
   _id: string
@@ -89,6 +90,7 @@ function AdminDashboardContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("requests")
+  const [activeMainTab, setActiveMainTab] = useState("home")
   const [user, setUser] = useState<any>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [rejectionReason, setRejectionReason] = useState("")
@@ -100,6 +102,7 @@ function AdminDashboardContent() {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
+  const [logoutLoading, setLogoutLoading] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -141,9 +144,16 @@ function AdminDashboardContent() {
     }
   }
 
-  const handleLogout = () => {
-    authAPI.logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    setLogoutLoading(true)
+    try {
+      authAPI.logout()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setLogoutLoading(false)
+    }
   }
 
   const handleAcceptProject = async (projectId: string) => {
@@ -224,9 +234,14 @@ function AdminDashboardContent() {
               size="sm" 
               className="text-white hover:bg-white/20"
               onClick={handleLogout}
+              disabled={logoutLoading}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {logoutLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <LogOut className="h-4 w-4 mr-2" />
+              )}
+              {logoutLoading ? "Logging out..." : "Logout"}
             </Button>
           </div>
           {/* Mobile hamburger/profile menu */}
@@ -244,10 +259,15 @@ function AdminDashboardContent() {
                     variant="ghost" 
                     className="w-full justify-start text-red-600"
                     onClick={handleLogout}
+                    disabled={logoutLoading}
                   >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+                    {logoutLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <LogOut className="h-4 w-4 mr-2" />
+                    )}
+                    {logoutLoading ? "Logging out..." : "Logout"}
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -258,6 +278,28 @@ function AdminDashboardContent() {
       {/* Navigation Tabs */}
       <div className="container mx-auto px-2 sm:px-4 py-6">
         <FormError error={error} />
+        {/* Main Sections */}
+        <div className="flex space-x-1 bg-white p-1 rounded-lg shadow-sm mb-6">
+          <button
+            onClick={() => setActiveMainTab("home")}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeMainTab === "home" ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Home
+          </button>
+          <button
+            onClick={() => setActiveMainTab("clients")}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeMainTab === "clients" ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Client Management
+          </button>
+        </div>
+
+        {activeMainTab === "home" && (
+        <>
         {/* Search, Sort, and Pagination Controls */}
         <div className="flex flex-wrap gap-2 mb-4 items-center">
           <Input
@@ -425,6 +467,12 @@ function AdminDashboardContent() {
             })()}
             </CardContent>
           </Card>
+        </>
+        )}
+
+        {activeMainTab === "clients" && (
+          <ClientManagement />
+        )}
       </div>
 
       {/* Reject Project Dialog */}
